@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { css } from "@emotion/react";
 import Avatar from "../../../components/Avatar";
 import getProfileImages from "../../../api/get/getProfileImages";
@@ -6,9 +6,6 @@ import useFetch from "../../../api/useFetch";
 import avatarDefaultImg from "../../../assets/images/img-avatar-default.png";
 import { BREAKPOINTS } from "../../../constants/constants";
 import Skeleton from "../../../components/Skeleton/Skeleton";
-import { IconPlusButton } from "../../../components/Button/IconButtons";
-import { uploadToUploadcare } from "../../../api/get/getNewImageUrl";
-import Button from "../../../components/Button";
 
 const SelectProfileImage = ({ onChange, onResponsive }) => {
   const [images, setImages] = useState([]);
@@ -16,10 +13,6 @@ const SelectProfileImage = ({ onChange, onResponsive }) => {
   const [isImageDefault, setIsImageDefault] = useState(true);
 
   const { fetchError, fetchAsync } = useFetch(getProfileImages);
-
-  const fileInputRef = useRef();
-  const [isImgUploading, setIsImgUploading] = useState(false);
-  const [isUploadError, setIsUploadError] = useState(false);
 
   const isMobile = onResponsive === "mobile";
   const avatarSkeletonSize = isMobile ? "40px" : "56px";
@@ -37,32 +30,6 @@ const SelectProfileImage = ({ onChange, onResponsive }) => {
     setProfileImageUrl(avatarDefaultImg);
   };
 
-  const addProfileImage = () => {
-    fileInputRef.current.click();
-  };
-
-  const handleFileChange = async ({ target }) => {
-    const file = target.files?.[0];
-    if (!file) return;
-
-    setIsImgUploading(true);
-    setIsUploadError(false);
-
-    try {
-      const newImageUrl = await uploadToUploadcare(file);
-      setImages((prev) => [...prev, newImageUrl]);
-      setProfileImageUrl(newImageUrl);
-      onChange?.(newImageUrl);
-    } catch (err) {
-      console.log("이미지 등록 실패: ", err);
-      setIsUploadError(true);
-    } finally {
-      setIsImgUploading(false);
-    }
-
-    fileInputRef.current.value = "";
-  };
-
   useEffect(() => {
     const fetchImages = async () => {
       const { imageUrls } = await fetchAsync();
@@ -74,53 +41,34 @@ const SelectProfileImage = ({ onChange, onResponsive }) => {
 
   return (
     <div css={SelectProfileImageStyle}>
-      <div className="user-profile-area">
-        <div
-          className={`profile-img-area ${isImageDefault ? "default" : ""}`}
-          onClick={initializeImage}
-        >
-          <Avatar size="lg" imgSrc={profileImageUrl} />
-        </div>
-        <input
-          type="file"
-          accept="image/*"
-          ref={fileInputRef}
-          style={{ display: "none" }}
-          onChange={handleFileChange}
-        />
-        <Button
-          variant="secondary"
-          size="sm"
-          style={{ width: "100%", padding: "6px" }}
-          onClick={addProfileImage}
-        >
-          추가하기
-        </Button>
+      <div
+        className={`profile-img-area ${isImageDefault ? "default" : ""}`}
+        onClick={initializeImage}
+      >
+        <Avatar size="lg" imgSrc={profileImageUrl} />
       </div>
-
       <div className="select-profile-img-area">
         {fetchError && <p>이미지를 불러오는 데 실패했어요.. 😢</p>}
         <ul className="select-profile-img">
           {images?.slice(1).map((imgSrc, i) => (
-            <li key={i}>
-              <Suspense
-                fallback={
-                  <Skeleton
-                    width={avatarSkeletonSize}
-                    height={avatarSkeletonSize}
-                  />
-                }
-              >
-                <Avatar
-                  imgSrc={imgSrc}
-                  size={isMobile ? "sm" : "md"}
-                  onClick={changeProfileImageUrl}
+            <Suspense
+              fallback={
+                <Skeleton
+                  key={i}
+                  width={avatarSkeletonSize}
+                  height={avatarSkeletonSize}
                 />
-              </Suspense>
-            </li>
+              }
+            >
+              <Avatar
+                key={i}
+                imgSrc={imgSrc}
+                size={isMobile ? "sm" : "md"}
+                onClick={changeProfileImageUrl}
+              />
+            </Suspense>
           ))}
         </ul>
-        {isUploadError && <p>이미지 등록에 실패했어요.. 😅</p>}
       </div>
     </div>
   );
@@ -135,14 +83,6 @@ const SelectProfileImageStyle = css`
 
   @media (min-width: ${BREAKPOINTS.md}px) {
     gap: 32px;
-  }
-
-  .user-profile-area {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
   }
 
   .profile-img-area {
